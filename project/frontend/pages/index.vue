@@ -5,5 +5,7 @@ const text = `# Hello World! **she**`
 
 
 <template>
-    <MarkdownRenderer :source="text" />
+    <div class="container pt-10 pb-32">
+
+    </div>
 </template>
