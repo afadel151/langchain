@@ -1,5 +1,9 @@
-<script setup></script>
+<script setup>
+import 'highlight.js/styles/monokai.css';
+const text = `# Hello World! **she**`
+</script>
+
 
 <template>
-    Hello
+    <MarkdownRenderer :source="text" />
 </template>
