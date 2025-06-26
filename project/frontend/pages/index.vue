@@ -14,7 +14,7 @@ import TextInput from '~/components/TextInput.vue';
         <div class="w-full ">
             <h1 v-if="outputs.length === 0" class="text-4xl text-center mb-10">What do you want to know</h1>
             <TextInput />
+            <Output v-for="(output,i) in outputs" :output="output" :key="i" />
         </div>
-        
     </div>
 </template>
