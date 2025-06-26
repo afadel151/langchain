@@ -45,3 +45,5 @@ def load_history(conversation_id: str):
             history.append(AIMessage(content=msg["content"]))
         # You can also handle tool messages here if needed
     return history
+
+
