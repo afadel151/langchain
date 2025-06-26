@@ -36,13 +36,4 @@ class QueueCallbackHandler(AsyncCallbackHandler):
             self.queue.put_nowait("<<STEP_END>>")
 
 
-async def execute_tool(tool_call: AIMessage, name2tool: dict) -> ToolMessage:
-    tool_name = tool_call.tool_calls[0]["name"]
-    tool_args = tool_call.tool_calls[0]["args"]
-    tool_out = await name2tool[tool_name](**tool_args)
-    return ToolMessage(
-        content=f"{tool_out}",
-        tool_call_id=tool_call.tool_calls[0]["id"]
-    )
-
 

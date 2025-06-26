@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 load_dotenv() 
 import asyncio 
@@ -18,19 +19,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+class InvokeRequest(BaseModel):
+    content: str
+    conversation_id: str
 @app.get("/")
 def read_root():
     return {"message": "API is running!"}
 
 
 @app.post("/invoke")
-async def invoke(content: str):
+async def invoke(request: InvokeRequest):
+    print(f"Received request: {request}")
     queue: asyncio.Queue = asyncio.Queue()
     streamer = QueueCallbackHandler(queue)
-    # return the streaming response
     return StreamingResponse(
-        token_generator(agent_executor,content, streamer),
+        token_generator(agent_executor,request.conversation_id,request.content, streamer),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -3,9 +3,11 @@ from messages import QueueCallbackHandler
 import asyncio
 # streaming function
 
-async def token_generator(agent_executor: CustomAgentExecutor ,content: str, streamer: QueueCallbackHandler):
+async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: str ,content: str, streamer: QueueCallbackHandler):
+    print(f"Starting token generation for conversation {conversation_id} ")
     task = asyncio.create_task(agent_executor.invoke(
-        input=content,
+        content,
+        conversation_id,
         streamer=streamer,
         verbose=True  # set to True to see verbose output in console
     ))
