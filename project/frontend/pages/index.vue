@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import 'highlight.js/styles/monokai.css';
-import type { ChatOutput } from '~/shared/types';
-const text = `# Hello World! **she**`
+import { ref } from 'vue';
+import type { ChatOutput } from '../shared/types';
 const outputs = ref<ChatOutput[]>([])
+import TextInput from '../components/TextInput.vue';
 
-import TextInput from '~/components/TextInput.vue';
 </script>
 
 

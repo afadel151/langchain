@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ChatOutput } from "@/shared/types";
 import { IncompleteJsonParser } from "incomplete-json-parser";
-
+import { InferenceClient } from "@huggingface/inference";
+const client = new InferenceClient("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");
 const parser = new IncompleteJsonParser();
 const isGenerating = ref(false);
 const text = ref("");
@@ -15,14 +16,46 @@ function setOutputs(
     outputs.value = newValue;
   }
 }
-const setIsGenerating = (state: boolean) => {};
+const setIsGenerating = (state: boolean) => { };
 
 const outputs = ref<ChatOutput[]>([]);
 
-async function subimt(e: Event) {
+async function submit(e: any) {
   e.preventDefault();
-
-  text.value = "";
+  if (outputs.value.length == 0) {
+    let generated_title : string | undefined = ""
+    try {
+      
+      const chatCompletion = await client.chatCompletion({
+        provider: "auto",
+        model: "microsoft/Phi-3-mini-4k-instruct",
+        messages: [
+          {
+            role: "user",
+            content: `Generate a maximum 5 words conversation title from the following text: "${text.value}"`,
+          },
+        ],
+      });
+      generated_title = chatCompletion.choices[0].message.content
+    } catch (error) {
+      console.log("Error creating conversation:", error);
+    }
+    try {
+      const res = await fetch("http://127.0.0.1:8000/create_conversation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title: generated_title || "New Conversation" }),
+      });
+      console.log(res);
+      
+    } catch (error) {
+      console.log("Error creating conversation:", error);
+    }
+  }
+  // sendMessage(text.value);
+  // text.value = "";
 }
 
 const sendMessage = async (message: string) => {
@@ -40,12 +73,12 @@ const sendMessage = async (message: string) => {
   setOutputs(newOutputs);
   setIsGenerating(true);
   try {
-    const res = await fetch(`http://localhost:8000/invoke?content=${text}`, {
+    const res = await fetch(`http://127.0.0.1:8000/invoke?content=${encodeURIComponent(message)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(text),
+      body: JSON.stringify({ content: message })
     });
 
     if (!res.ok) {
@@ -86,7 +119,7 @@ const sendMessage = async (message: string) => {
                     const result = JSON.parse(jsonStr);
                     currentSteps.push({ name: matchStepName, result });
                     buffer = buffer.replace(fullMatch, "");
-                  } catch (error) {}
+                  } catch (error) { }
                 }
               }
             } else {
@@ -128,10 +161,10 @@ const sendMessage = async (message: string) => {
   }
 };
 
-function submitOnEnter(event: KeyboardEvent) {
+function submitOnEnter(event: any) {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
-    subimt(event);
+    submit(event);
   }
 }
 const adjustHeight = () => {
@@ -167,33 +200,18 @@ import { ArrowRight } from "lucide-vue-next";
 </script>
 
 <template>
-  <form
-    :onsubmit="subimt"
-    class="flex gap-3 z-0"
-    :class="
-      outputs.length > 0
-        ? 'fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg'
-        : ''
-    "
-  >
-    <div
-      class="w-full relative flex z-0 items-center  bg-gray-800 rounded-lg border border-gray-600"
-    >
-      <textarea
-        v-model="text"
-        ref="textAreaRef"
-        @keydown.enter.prevent="submitOnEnter"
-        @input="adjustHeight"
+  <form @submit.prevent="submit" class="flex gap-3 z-0" :class="outputs.length > 0
+    ? 'fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg'
+    : ''
+    ">
+    <div class="w-full relative flex z-0 items-center  bg-gray-800 rounded-lg border border-gray-600">
+      <textarea v-model="text" ref="textAreaRef" @keydown.enter.prevent="submitOnEnter" @input="adjustHeight"
         class="w-full text-white z-0  p-3 bg-transparent min-h-24 focus:outline-none focus-visible:ring-0 focus-visible:ring-ring/50 resize-none"
-        placeholder="Type your message here..."
-      >
+        placeholder="Type your message here...">
       </textarea>
-      <Button
-        type="submit"
-        :disabled="isGenerating || !text"
-        class="  absolute right-5 w-fit p-5  rounded-full hover:translate-x-1 hover:bg-gray-500 z-10"
-      >
-        <ArrowRight  />
+      <Button type="submit" :disabled="isGenerating || !text"
+        class="  absolute right-5 w-fit p-5  rounded-full hover:translate-x-1 hover:bg-gray-500 z-10">
+        <ArrowRight />
       </Button>
     </div>
   </form>

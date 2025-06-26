@@ -4,6 +4,8 @@
     "": {
       "name": "nuxt-app",
       "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "@huggingface/inference": "^4.0.6",
         "@tailwindcss/vite": "^4.1.10",
         "@vueuse/core": "^13.4.0",
         "class-variance-authority": "^0.7.1",
@@ -151,6 +153,14 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.9", "", {}, "sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg=="],
 
     "@floating-ui/vue": ["@floating-ui/vue@1.1.6", "", { "dependencies": { "@floating-ui/dom": "^1.0.0", "@floating-ui/utils": "^0.2.9", "vue-demi": ">=0.13.0" } }, "sha512-XFlUzGHGv12zbgHNk5FN2mUB7ROul3oG2ENdTpWdE+qMFxyNxWSRmsoyhiEnpmabNm6WnUvR1OvJfUfN4ojC1A=="],
+
+    "@google/generative-ai": ["@google/generative-ai@0.24.1", "", {}, "sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q=="],
+
+    "@huggingface/inference": ["@huggingface/inference@4.0.6", "", { "dependencies": { "@huggingface/jinja": "^0.5.0", "@huggingface/tasks": "^0.19.15" } }, "sha512-c+2+O46l+NIFoNcA4Qgg4fHdj+HHxkpm/uo8L2xFnSLgaouRon5tf/5fQLMoWoxmJD5H6pHezPF+9hy1+OMAAg=="],
+
+    "@huggingface/jinja": ["@huggingface/jinja@0.5.0", "", {}, "sha512-Ptc03/jGRiYRoi0bUYKZ14MkDslsBRT24oxmsvUlfYrvQMldrxCevhPnT+hfX8awKTT8/f/0ZBBWldoeAcMHdQ=="],
+
+    "@huggingface/tasks": ["@huggingface/tasks@0.19.19", "", {}, "sha512-+hXA5pk8gnaWc0BK/s5e68rwsucjPJjdoSBx9MCkRwVgVS0JwXCF5EbaSBSDt4CUDsq1uj33RbdQt/K9l2mJLg=="],
 
     "@internationalized/date": ["@internationalized/date@3.8.2", "", { "dependencies": { "@swc/helpers": "^0.5.0" } }, "sha512-/wENk7CbvLbkUvX1tu0mwq49CVkkWpkXubGel6birjRPyo6uQ4nQpnq5xZu823zRCwwn82zgHrvgF1vZyvmVgA=="],
 
