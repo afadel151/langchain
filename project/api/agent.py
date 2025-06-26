@@ -1,7 +1,7 @@
 from dotenv import load_dotenv 
 load_dotenv()
 
-
+from db import get_conversation, create_conversation, add_message, list_conversations
 import asyncio
 from langchain.chat_models import init_chat_model
 from messages import QueueCallbackHandler, execute_tool
@@ -34,6 +34,17 @@ prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder(variable_name="agent_scratchpad"),
 ])
 
+
+def load_history(conversation_id: str):
+    conv = get_conversation(conversation_id)
+    history = []
+    for msg in conv["messages"]:
+        if msg["role"] == "user":
+            history.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "assistant":
+            history.append(AIMessage(content=msg["content"]))
+        # You can also handle tool messages here if needed
+    return history
 class CustomAgentExecutor:
     def __init__(self, max_iterations: int = 3):
         self.chat_history: list[BaseMessage] = []
