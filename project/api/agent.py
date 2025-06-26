@@ -35,16 +35,7 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-def load_history(conversation_id: str):
-    conv = get_conversation(conversation_id)
-    history = []
-    for msg in conv["messages"]:
-        if msg["role"] == "user":
-            history.append(HumanMessage(content=msg["content"]))
-        elif msg["role"] == "assistant":
-            history.append(AIMessage(content=msg["content"]))
-        # You can also handle tool messages here if needed
-    return history
+
 class CustomAgentExecutor:
     def __init__(self, max_iterations: int = 3):
         self.chat_history: list[BaseMessage] = []
@@ -58,7 +49,7 @@ class CustomAgentExecutor:
             | prompt
             | llm.bind_tools(tools, tool_choice="any")
         )
-    async def invoke(self, input: str, streamer: QueueCallbackHandler, verbose: bool = False) -> dict:
+    async def invoke(self, input: str,conversation_id: str, streamer: QueueCallbackHandler, verbose: bool = False) -> dict:
         count = 0
         final_answer: str | None = None
         agent_scratchpad: list[AIMessage | ToolMessage] = []
@@ -110,6 +101,8 @@ class CustomAgentExecutor:
                     final_answer_call = tool_call.tool_calls[0]
                     final_answer = final_answer_call["args"]["answer"]
                     found_final_answer = True
+                    add_message(conversation_id, "user", input)
+                    add_message(conversation_id, "assistant", final_answer)
                     break
             # Only break the loop if we found a final answer
             if found_final_answer:
