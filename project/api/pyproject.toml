@@ -79,6 +79,7 @@ dependencies = [
     "pydantic-core==2.33.2",
     "pydantic-settings==2.9.1",
     "pygments==2.19.1",
+    "pymongo>=4.13.2",
     "python-dateutil==2.9.0.post0",
     "python-dotenv==1.1.0",
     "pyyaml==6.0.2",
