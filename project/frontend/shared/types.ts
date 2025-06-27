@@ -11,3 +11,12 @@ export type ChatOutput = {
     tools_used: string[];
   };
 };
+
+export type Conversation = {
+  _id: string;
+  title: string;
+  messages: {
+    role: "user" | "assistant";
+    content: string;
+  }[];
+}

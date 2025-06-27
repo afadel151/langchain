@@ -10,36 +10,32 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-
+import type { Conversation } from "~/shared/types";
+const items = ref<Conversation[]>([]);
+async function get_conversations(){
+  const response = await fetch("http://127.0.0.1:8000/conversations", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch conversations");
+  }
+  items.value = await response.json();
+}
+onMounted(() => {
+  // Set the width of the dropdown menu anchor
+  get_conversations();
+})
 // Menu items.
-const items = [
-  {
-    title: "Home",
-    id: "home",
-  },
-  {
-    title: "Inbox",
-    id: "inbox",
-  },
-  {
-    title: "Calendar",
-    id: "calendar",
-  },
-  {
-    title: "Search",
-    id: "search",
-  },
-  {
-    title: "Settings",
-    id: "settings",
-  },
-];
+
 import { ChevronDown } from "lucide-vue-next";
 </script>
 
 <template>
   <Sidebar>
-     <SidebarHeader>
+    <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
           <DropdownMenu>
@@ -66,9 +62,9 @@ import { ChevronDown } from "lucide-vue-next";
         <SidebarGroupLabel>Chats History</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-              <SidebarMenuItem v-for="item in items" :key="item.title">
+              <SidebarMenuItem v-for="item in items" :key="item._id">
                 <SidebarMenuButton asChild>
-                    <a :href="item.id">
+                    <a :href="item._id">
                       <span>{{item.title}}</span>
                     </a>
                 </SidebarMenuButton>

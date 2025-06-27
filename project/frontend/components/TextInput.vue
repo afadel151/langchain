@@ -37,6 +37,7 @@ async function submit(e: any) {
         ],
       });
       generated_title = chatCompletion.choices[0].message.content
+      console.log("Generated title:", generated_title);
     } catch (error) {
       console.log("Error creating conversation:", error);
     }
@@ -48,17 +49,17 @@ async function submit(e: any) {
         },
         body: JSON.stringify({ title: generated_title || "New Conversation" }),
       });
-      console.log(res);
-      
+      const data = await res.json();  // ⬅️ THIS reads the body!
+      sendMessage(text.value,data.conversation_id);
+      text.value = "";
     } catch (error) {
       console.log("Error creating conversation:", error);
     }
   }
-  // sendMessage(text.value);
-  // text.value = "";
+  
 }
 
-const sendMessage = async (message: string) => {
+const sendMessage = async (message: string,conversation_id: string) => {
   const newOutputs = [
     ...outputs.value,
     {
@@ -73,19 +74,21 @@ const sendMessage = async (message: string) => {
   setOutputs(newOutputs);
   setIsGenerating(true);
   try {
-    const res = await fetch(`http://127.0.0.1:8000/invoke?content=${encodeURIComponent(message)}`, {
+    const res = await fetch(`http://127.0.0.1:8000/invoke`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ content: message })
+      body: JSON.stringify({ content: message, conversation_id : conversation_id })
     });
 
     if (!res.ok) {
       throw new Error("Error");
     }
 
-    const data = res.body;
+    const data = await res.json();  
+    console.log(data);
+    
     if (!data) {
       setIsGenerating(false);
       return;
