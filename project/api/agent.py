@@ -69,6 +69,7 @@ async def execute_tool(tool_call, name2tool) -> ToolMessage:
             tool_call_id=tool_call_data["id"]  # Fixed: use tool_call_data["id"] instead of tool_call['tool_call_id']
         )
 
+
 class CustomAgentExecutor:
     def __init__(self, max_iterations: int = 5):
         self.chat_history: list[BaseMessage] = []
@@ -84,95 +85,101 @@ class CustomAgentExecutor:
         )
     
     async def invoke(self, input: str, conversation_id: str, streamer: QueueCallbackHandler, verbose: bool = False) -> dict:
+        print(f"\n=== CustomAgentExecutor.invoke called ===")
+        print(f"Input: {input}")
+        print(f"Conversation ID: {conversation_id}")
+        
         count = 0
         final_answer: str | None = None
-        agent_scratchpad: list[AIMessage | ToolMessage ] = []
-        
-        async def stream(query: str) -> list[AIMessage]:
-            response = self.agent.with_config(
-                callbacks=[streamer]
-            )
-            outputs = []
-            # start streaming
-            async for token in response.astream({
-                "input": query,
-                "chat_history": self.chat_history,
-                "agent_scratchpad": agent_scratchpad
-            }):
-                print(f"Received token: {token}")
-                tool_calls = token.tool_calls
-                print(f"\nTool calls in token: {tool_calls}")
-                if tool_calls:
-                    # first check if we have a tool call id - this indicates a new tool
-                    if tool_calls[0]["id"]:
-                        outputs.append(token)
-                        print('Outputs', outputs)
-                    else:
-                        outputs[-1] += token
-            
-            # Convert to AIMessage objects with proper tool_call_id
-            return [
-                AIMessage(
-                    content=x.content,
-                    tool_calls=x.tool_calls,
-                    # Remove the tool_call_id from here - it's not needed for AIMessage
-                ) for x in outputs
-            ]   
+        agent_scratchpad: list[AIMessage | ToolMessage] = []
         
         while count < self.max_iterations:
-            # invoke a step for the agent to generate a tool call
-            tool_calls = await stream(query=input)
-            print(f"Tool calls generated: {tool_calls}")
-            print(f"Length of tool_calls: {len(tool_calls)}")
+            print(f"\n=== Iteration {count + 1}/{self.max_iterations} ===")
             
-            # gather tool execution coroutines
             try:
+                # Generate tool calls using streaming
+                print("Generating agent response...")
+                
+                # Use the agent with streaming callbacks
+                response = await self.agent.with_config(
+                    callbacks=[streamer]
+                ).ainvoke({
+                    "input": input,
+                    "chat_history": self.chat_history,
+                    "agent_scratchpad": agent_scratchpad
+                })
+                
+                print(f"Agent response received: {type(response)}")
+                print(f"Response tool calls: {getattr(response, 'tool_calls', 'NO TOOL_CALLS')}")
+                
+                # Convert response to list for compatibility with existing code
+                tool_calls = [response] if response.tool_calls else []
+                
+                if not tool_calls:
+                    print("⚠️  No tool calls generated!")
+                    break
+                
+                print(f"Processing {len(tool_calls)} tool calls...")
+                
+                # Signal that we're starting tool execution
+                await streamer.queue.put("<<STEP_END>>")
+                
+                # Execute tools
                 tool_obs = await asyncio.gather(
                     *[execute_tool(tool_call, name2tool) for tool_call in tool_calls]
                 )
-            except Exception as e:
-                print(f"Error executing tool calls: {e}")
-                break
-            
-            print("Gather completed") 
-            print(f"Tool observations: {tool_obs}")
-            
-            # append tool calls and tool observations to the scratchpad in order
-            id2tool_obs = {tool_obs.tool_call_id: tool_obs for tool_obs in tool_obs}
-            
-            for tool_call in tool_calls:
-                # Get the tool call ID from the tool_calls data
-                tool_call_id = tool_call.tool_calls[0]["id"]
-                agent_scratchpad.extend([
-                    tool_call,
-                    id2tool_obs[tool_call_id]
-                ])
-            
-            count += 1
-            
-            # if the tool call is the final answer tool, we stop
-            found_final_answer = False
-            for tool_call in tool_calls:
-                if tool_call.tool_calls[0]["name"] == "final_answer":
-                    print("Found final answer tool call")
-                    final_answer_call = tool_call.tool_calls[0]
-                    final_answer = final_answer_call["args"]["answer"]
-                    print(f"Final answer: {final_answer}")
-                    found_final_answer = True
-                    add_message(conversation_id, "user", input)
-                    add_message(conversation_id, "assistant", final_answer)
-                    break
-            
-            # Only break the loop if we found a final answer
-            if found_final_answer:
-                break
                 
-        # add the final output to the chat history, we only add the "answer" field
+                print(f"Tool execution completed. Observations: {len(tool_obs)}")
+                
+                # Update agent scratchpad
+                id2tool_obs = {tool_ob.tool_call_id: tool_ob for tool_ob in tool_obs}
+                
+                for tool_call in tool_calls:
+                    for tc in tool_call.tool_calls:
+                        tool_call_id = tc["id"]
+                        agent_scratchpad.extend([
+                            tool_call,
+                            id2tool_obs[tool_call_id]
+                        ])
+                
+                count += 1
+                
+                # Check for final answer
+                found_final_answer = False
+                for tool_call in tool_calls:
+                    for tc in tool_call.tool_calls:
+                        if tc["name"] == "final_answer":
+                            print("✓ Found final answer tool call")
+                            final_answer = tc["args"]["answer"]
+                            print(f"Final answer: {final_answer}")
+                            found_final_answer = True
+                            add_message(conversation_id, "user", input)
+                            add_message(conversation_id, "assistant", final_answer)
+                            break
+                    if found_final_answer:
+                        break
+                
+                if found_final_answer:
+                    break
+                    
+            except Exception as e:
+                print(f"❌ Error in iteration {count + 1}: {e}")
+                import traceback
+                traceback.print_exc()
+                break
+        
+        # Signal completion
+        await streamer.queue.put("<<STEP_END>>")
+        
+        # Update chat history
         self.chat_history.extend([
             HumanMessage(content=input),
             AIMessage(content=final_answer or "No answer found")
         ])
-        return final_answer_call if final_answer else {"answer": "No answer found", "tools_used": []}
+        
+        result = {"answer": final_answer or "No answer found", "tools_used": []}
+        print(f"=== CustomAgentExecutor.invoke completed. Result: {result} ===")
+        return result
     
     
 agent = CustomAgentExecutor()

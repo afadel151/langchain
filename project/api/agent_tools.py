@@ -71,3 +71,6 @@ async def serpapi(query: str) -> list[Article]:
 async def final_answer(answer: str, tools_used: list[str]) -> dict[str, str | list[str]]:
     """Use this tool to provide a final answer to the user."""
     return {"answer": answer, "tools_used": tools_used}
+
+
+
