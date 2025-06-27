@@ -1,14 +1,19 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 import asyncio
+from messages import QueueCallbackHandler
 from debug import DebugQueueCallbackHandler
-from api.debug import debug_agent_invoke
+from debug import debug_agent_invoke
+from langchain_core.messages import AIMessage
+
 router = APIRouter()
-from agent import agent_executor
+from agent import CustomAgentExecutor, agent_executor, execute_tool
 class InvokeRequest(BaseModel):
     content: str
     conversation_id: str
-
+from agent_tools import add, subtract, multiply, exponential, final_answer, serpapi 
+tools = [add, subtract, multiply, exponential, final_answer, serpapi]
+name2tool = {tool.name: tool.coroutine for tool in tools}
 @router.post("/debug-invoke")
 async def debug_invoke(request: InvokeRequest):
     """Debug endpoint to test agent without streaming complications"""
