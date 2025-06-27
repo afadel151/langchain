@@ -14,7 +14,7 @@ agent_executor = CustomAgentExecutor()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ou ["*"] pour tout autoriser
+    allow_origins=["http://localhost:3000"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +42,7 @@ async def invoke(request: InvokeRequest):
     )
 
 @app.post("/create_conversation")
-def create_conversation(title: str = "New Conversation"):
+def add_conversation(title: str = "New Conversation"):
     """Creates a new conversation in the database with the given title."""
     conversation_id = create_conversation(title)
     return {"conversation_id": conversation_id}

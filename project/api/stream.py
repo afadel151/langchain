@@ -11,13 +11,16 @@ async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: 
         streamer=streamer,
         verbose=True  # set to True to see verbose output in console
     ))
+    print("Task created, now streaming tokens...")
     # initialize various components to stream
     async for token in streamer:
         try:
             if token == "<<STEP_END>>":
+                print("Received step end token")
                 # send end of step token
                 yield "</step>"
             elif tool_calls := token.message.additional_kwargs.get("tool_calls"):
+                print(f"Received tool calls: {tool_calls}")
                 if tool_name := tool_calls[0]["function"]["name"]:
                     # send start of step token followed by step name tokens
                     yield f"<step><step_name>{tool_name}</step_name>"
