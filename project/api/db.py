@@ -20,7 +20,9 @@ def create_conversation(title="New Conversation"):
     })
     return str(result.inserted_id)
 
-
+def serialize_conversation(conv):
+    conv["_id"] = str(conv["_id"])
+    return conv
 def add_message(conversation_id: str, role: str, content: str, **kwargs):
     msg = {"role": role, "content": content} | kwargs
     conversations.update_one(
@@ -31,7 +33,7 @@ def get_conversation(conversation_id: str):
     return conversations.find_one({"_id": ObjectId(conversation_id)})
 
 def list_conversations():
-    return list(conversations.find({}, {"messages": 0}))
+    return [serialize_conversation(c) for c in conversations.find()]
 
 
 
