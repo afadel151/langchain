@@ -1,0 +1,35 @@
+[
+    {
+        "question": "Hello, what's 2 + 2",
+        "response": {
+            "answer": "2 + 2 is 4",
+            "tools_used": [
+                {
+                "name": "add",
+                "args": {
+                    "x": 2,
+                    "y": 2
+                },
+                "output": "4"
+                }
+            ],
+            "steps": [
+                {
+                "name": "add",
+                "result": {
+                    "x": 2,
+                    "y": 2,
+                    "output": "4"
+                }
+                },
+                {
+                "name": "final_answer",
+                "result": {
+                    "answer": "2 + 2 is 4",
+                    "output": "2 + 2 is 4"
+                }
+                }
+        ]
+        }
+    }
+]
