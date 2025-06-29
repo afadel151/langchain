@@ -33,7 +33,19 @@ const currentAnswer = ref<{ answer: string; tools_used: string[] } | null>(null)
 
 const isStreaming = ref(false);
 
+import { watch, nextTick } from 'vue'
 
+const scrollContainer : any = ref(null)
+
+watch(
+    () => conversation.value?.messages.length,
+    async () => {
+        await nextTick()
+        if (scrollContainer.value) {
+            scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight
+        }
+    }
+)
 const currentMessage = ref<{
     question: string;
     response: {
@@ -124,7 +136,7 @@ const sendMessage = async (message: string) => {
                                             args: { ...step.result },
                                             output: step.result.output || JSON.stringify(step.result)
                                         }));
-                                    
+
                                     console.log(`🔧 Updated tools_used:`, currentMessage.value.response.tools_used);
                                 }
                             } else {
@@ -137,14 +149,14 @@ const sendMessage = async (message: string) => {
                                     currentMessage.value.response.steps.push(newStep);
                                     console.log(`📝 Added step to message:`, newStep);
                                 }
-                                
+
                                 console.log(`✅ Step pushed: ${JSON.stringify(newStep)}`);
                             }
                         } catch (parseError) {
                             console.error(`❌ Error parsing step content for "${currentStepName}":`, parseError);
                             console.error(`Content was: ${currentStepContent}`);
                         }
-                        
+
                         insideStep = false;
                         currentStepName = "";
                         currentStepContent = "";
@@ -206,7 +218,7 @@ const sendMessage = async (message: string) => {
 
 <template>
     <div class="container pt-4 pb-0 h-full flex flex-col">
-        <div class="flex-1 overflow-y-auto scroll pb-20"
+        <div ref="scrollContainer" class="flex-1 overflow-y-auto scroll pb-20"
             :class="conversation?.messages.length === 0 ? 'flex items-center justify-center' : ''">
             <div class="space-y-4 pt-10">
                 <div v-if="loading" class="text-center">Loading conversation...</div>
@@ -215,7 +227,8 @@ const sendMessage = async (message: string) => {
                         Debug: Total messages: {{ conversation.messages.length }}
                         <br>Is streaming: {{ isStreaming }}
                     </div>
-                    <Output v-for="(qaPair, index) in conversation.messages" :key="index" :output="qaPair" />
+                    <Output v-for="(qaPair, index) in conversation.messages" :key="index"
+                        :output="qaPair" />
                 </div>
                 <div v-if="isStreaming && streamedSteps.length" class="mt-10 p-4 bg-gray-100 rounded">
                     <h3 class="text-lg font-bold">Debug: Streaming Steps</h3>
