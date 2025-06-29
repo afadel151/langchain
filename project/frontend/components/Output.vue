@@ -10,7 +10,7 @@ import MarkdownRenderer from "./MarkdownRenderer.vue";
 
 <template>
     <div className="border-t mt-10  border-gray-700 py-10 first-of-type:pt-0 first-of-type:border-t-0">
-        <p class="max-w-[75%] ml-auto bg-gray-200 text-gray-900 text-base rounded-2xl rounded-tr-sm px-4 py-2 mb-2">
+        <p class="max-w-[75%] w-fit  ml-auto bg-gray-200 text-gray-900 text-base rounded-2xl rounded-tr-sm px-4 py-2 mb-2">
             {{ output.question }}
         </p>
         <Steps v-if="output.response.steps && output.response.steps.length > 0" :steps="output.response.steps"
