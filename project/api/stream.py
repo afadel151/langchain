@@ -7,20 +7,16 @@ from messages import QueueCallbackHandler
 
 async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: str, content: str, streamer: QueueCallbackHandler):
     print(f"=== Starting token generation for conversation {conversation_id} ===")
-    
     task = asyncio.create_task(agent_executor.invoke(
         content,
         conversation_id,
         streamer=streamer,
         verbose=True
     ))
-    
-    print("Task created, now listening for tokens...")
-    
+    print("task created  now listening for tokens ")
     current_step_name = None
     step_buffer = ""
     token_count = 0
-    
     try:
         while not task.done():
             try:
@@ -28,17 +24,13 @@ async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: 
                 token_count += 1
                 print(f"\n--- Token #{token_count} ---")
                 print(f"Received: {repr(token)}")
-                
                 if token == "<<STEP_END>>":
                     print("Step end detected")
                     if current_step_name and step_buffer:
                         yield step_buffer
                         yield "</step>"
                         step_buffer = ""
-                    else:
-                        yield "</step>"
                     current_step_name = None
-                    
                 elif isinstance(token, AIMessage) and token.tool_calls:
                     print(f"Processing tool call message: {token.tool_calls}")
                     for tool_call in token.tool_calls:
@@ -50,11 +42,10 @@ async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: 
                         print(f"Yielding: {repr(step_start)}")
                         yield step_start
                         if tool_args:
-                            args_json = json.dumps(tool_args)
+                            args_json = json.dumps(tool_args, ensure_ascii=False)
                             step_buffer = args_json
                             print(f"Buffering args: {repr(args_json)}")
                             yield args_json
-                
                 elif isinstance(token, str):
                     print(f"String token: {repr(token)}")
                     if current_step_name:
@@ -67,7 +58,6 @@ async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: 
                     if current_step_name:
                         step_buffer += token_str
                     yield token_str
-                    
             except asyncio.TimeoutError:
                 if task.done():
                     print("Task completed, breaking from token loop")
@@ -90,7 +80,6 @@ async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: 
             except asyncio.TimeoutError:
                 print("Task completion timeout")
                 task.cancel()
-        
         if current_step_name and step_buffer:
             yield step_buffer
             yield "</step>"
