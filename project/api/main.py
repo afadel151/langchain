@@ -5,18 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_mistralai import ChatMistralAI
 from pydantic import BaseModel
 import uvicorn
-from langchain_core.messages import HumanMessage
+from custom_requests import InvokeRequest, CreateConversationRequest, GetConversationRequest
 from debug import DebugQueueCallbackHandler, debug_agent_invoke
 load_dotenv() 
 import asyncio 
 from agent import CustomAgentExecutor, execute_tool
 from messages import QueueCallbackHandler
 from stream import token_generator
-from db import create_conversation,list_conversations
 from langchain_core.runnables import ConfigurableField
 from langchain_core.messages import AIMessage
-
-
+from db import DatabaseConnection
+database = DatabaseConnection()
 agent_executor = CustomAgentExecutor()
 app = FastAPI()
 
@@ -43,11 +42,9 @@ llm = ChatMistralAI(
 from agent_tools import add, subtract, multiply, exponential, final_answer, serpapi 
 tools = [add, subtract, multiply, exponential, final_answer, serpapi]
 name2tool = {tool.name: tool.coroutine for tool in tools}
-class InvokeRequest(BaseModel):
-    content: str
-    conversation_id: str
-class CreateConversationRequest(BaseModel):
-    title: str = "New Conversation"
+
+    
+
 @app.get("/")
 def read_root():
     return {"message": "API is running!"}
@@ -73,19 +70,56 @@ async def invoke_fixed(request: InvokeRequest):
 def add_conversation(request: CreateConversationRequest):
     """Creates a new conversation in the database with the given title."""
     print(f"Creating conversation with title: {request.title}")
-    conversation_id = create_conversation(request.title)
+    conversation_id = database.create_conversation(request.title)
     return {"conversation_id": conversation_id}
 
+
+
+
+    
+    
 @app.post("/stream")
 def stream_response(prompt: str):
     for chunk in llm.stream(prompt):
         print(chunk.content)
 
 @app.get("/conversations")
-async def get_conversations():
+def get_conversations():
     """Returns a list of conversations from the database."""
-    conversations = list_conversations()
+    conversations =  database.list_conversations()
     return  conversations
+
+
+@app.get("/get_conversation")
+def get_conversation_by_id(conversation_id: str):
+    """Retrieves a conversation by its ID."""
+    print(f"Retrieving conversation with ID: {conversation_id}")
+    conversation = database.get_conversation(conversation_id)
+    if not conversation:
+        return {"error": "Conversation not found"}
+    
+    # Return the messages array which now contains Q&A pairs
+    return {
+        "conversation_id": conversation["_id"],
+        "title": conversation.get("title", "Untitled"),
+        "messages": conversation.get("messages", []),
+        "created_at": conversation.get("created_at"),
+        "updated_at": conversation.get("updated_at")
+    }
+@app.get("/get_messages/{conversation_id}")
+def get_messages_only(conversation_id: str):
+    """Retrieves just the messages array for a conversation."""
+    conversation = database.get_conversation(conversation_id)
+    if not conversation:
+        return {"error": "Conversation not found"}
+    
+    return conversation.get("messages", [])
+@app.get("/conversation_stats/{conversation_id}")
+def get_conversation_statistics(conversation_id: str):
+    """Get statistics about a conversation."""
+    stats = database.get_conversation_stats(conversation_id)
+    return stats
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
@@ -173,66 +207,4 @@ async def test_tools():
             }
     else:
         return {"error": "No tools found"}
-        
-# Also add this to your existing token_generator for more debugging
-async def enhanced_token_generator(agent_executor: CustomAgentExecutor, conversation_id: str, content: str, streamer: QueueCallbackHandler):
-    print(f"=== ENHANCED TOKEN GENERATOR START ===")
     
-    # First, test if the agent can generate anything at all
-    print("Testing direct agent invocation...")
-    try:
-        direct_response = agent_executor.agent.invoke({
-            "input": content,
-            "chat_history": agent_executor.chat_history,
-            "agent_scratchpad": []
-        })
-        print(f"Direct response successful: {type(direct_response)}")
-        print(f"Direct response content: {getattr(direct_response, 'content', 'NO CONTENT')}")
-        print(f"Direct response tool_calls: {getattr(direct_response, 'tool_calls', 'NO TOOL_CALLS')}")
-    except Exception as e:
-        print(f"Direct agent invocation failed: {e}")
-        yield f"Error: Direct agent invocation failed: {str(e)}"
-        return
-    
-    # Now test streaming
-    print("Testing streaming invocation...")
-    task = asyncio.create_task(agent_executor.invoke(
-        content,
-        conversation_id,
-        streamer=streamer,
-        verbose=True
-    ))
-    
-    token_count = 0
-    start_time = asyncio.get_event_loop().time()
-    
-    try:
-        async for token in streamer:
-            token_count += 1
-            elapsed = asyncio.get_event_loop().time() - start_time
-            
-            print(f"\n[{elapsed:.2f}s] Token #{token_count}: {repr(token)}")
-            
-            if token == "<<STEP_END>>":
-                yield "</step>"
-            elif hasattr(token, 'content') and token.content:
-                yield f"<content>{token.content}</content>"
-            else:
-                yield f"<unknown>{str(token)}</unknown>"
-                
-            # Safety break
-            if token_count > 100:
-                print("⚠️  Too many tokens, breaking")
-                break
-                
-    except Exception as e:
-        print(f"Error in streaming: {e}")
-        yield f"<error>{str(e)}</error>"
-    
-    finally:
-        try:
-            await task
-        except Exception as e:
-            print(f"Task completion error: {e}")
-    
-    print(f"=== ENHANCED TOKEN GENERATOR END (Total tokens: {token_count}) ===")

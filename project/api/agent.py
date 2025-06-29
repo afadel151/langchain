@@ -1,11 +1,8 @@
 from dotenv import load_dotenv 
 load_dotenv()
-import json
-
-from db import get_conversation, create_conversation, add_message, list_conversations
+from db import DatabaseConnection
 import asyncio
 from langchain_mistralai import ChatMistralAI
-
 from messages import QueueCallbackHandler
 import getpass
 import os
@@ -29,7 +26,7 @@ llm = ChatMistralAI(
         description="A list of callbacks to use for streaming",
     )
 )
-    
+
 llm2 = init_chat_model("gemini-2.0-flash", model_provider="google_genai").configurable_fields(
     callbacks=ConfigurableField(
         id="callbacks",
@@ -66,10 +63,10 @@ async def execute_tool(tool_call, name2tool) -> ToolMessage:
     print("Returning ToolMessage")
     return ToolMessage(
             content=f"{tool_out}",
-            tool_call_id=tool_call_data["id"]  # Fixed: use tool_call_data["id"] instead of tool_call['tool_call_id']
+            tool_call_id=tool_call_data["id"]
         )
-
-
+    
+database = DatabaseConnection()
 class CustomAgentExecutor:
     def __init__(self, max_iterations: int = 5):
         self.chat_history: list[BaseMessage] = []
@@ -92,6 +89,8 @@ class CustomAgentExecutor:
         count = 0
         final_answer: str | None = None
         agent_scratchpad: list[AIMessage | ToolMessage] = []
+        tools_used = []  # Track tools used for message storage
+        steps = []  # Track all steps for Vue component
         
         while count < self.max_iterations:
             print(f"\n=== Iteration {count + 1}/{self.max_iterations} ===")
@@ -141,6 +140,25 @@ class CustomAgentExecutor:
                             tool_call,
                             id2tool_obs[tool_call_id]
                         ])
+                        
+                        # Track tools used (excluding final_answer for tools_used list)
+                        tool_name = tc["name"]
+                        tool_args = tc["args"]
+                        tool_output = id2tool_obs[tool_call_id].content
+                        
+                        # Add step for Vue component (includes all tools)
+                        step = {
+                            "name": tool_name,
+                            "result": {**tool_args, "output": tool_output}
+                        }
+                        steps.append(step)
+                        
+                        if tool_name != "final_answer":
+                            tools_used.append({
+                                "name": tool_name,
+                                "args": tool_args,
+                                "output": tool_output
+                            })
                 
                 count += 1
                 
@@ -153,8 +171,6 @@ class CustomAgentExecutor:
                             final_answer = tc["args"]["answer"]
                             print(f"Final answer: {final_answer}")
                             found_final_answer = True
-                            add_message(conversation_id, "user", input)
-                            add_message(conversation_id, "assistant", final_answer)
                             break
                     if found_final_answer:
                         break
@@ -171,15 +187,34 @@ class CustomAgentExecutor:
         # Signal completion
         await streamer.queue.put("<<STEP_END>>")
         
+        # Store messages in the desired format (Q&A pairs)
+        try:
+            # Create Q&A pair object
+            qa_pair = {
+                "question": input,
+                "response": {
+                    "answer": final_answer or "No answer found",
+                    "tools_used": tools_used,
+                    "steps": steps
+                }
+            }
+            
+            # Add the Q&A pair to the conversation
+            database.add_message(conversation_id, qa_pair)
+            
+            print(f"Q&A pair stored successfully for conversation {conversation_id}")
+        except Exception as e:
+            print(f"Error storing Q&A pair: {e}")
+        
         # Update chat history
         self.chat_history.extend([
             HumanMessage(content=input),
             AIMessage(content=final_answer or "No answer found")
         ])
         
-        result = {"answer": final_answer or "No answer found", "tools_used": []}
+        result = {"answer": final_answer or "No answer found", "tools_used": tools_used, "steps": steps}
         print(f"=== CustomAgentExecutor.invoke completed. Result: {result} ===")
         return result
-    
-    
+
+
 agent = CustomAgentExecutor()
