@@ -19,8 +19,8 @@ function update_ouputs(newValue: ChatOutput[] | ((prev: ChatOutput[]) => ChatOut
         :class="outputs.length === 0 ? 'flex items-center justify-center' : ''">
         <div class="w-full ">
             <h1 v-if="outputs.length === 0" class="text-4xl text-center mb-10">What do you want to know</h1>
-            <TextInput @update-outputs="update_ouputs" :outputs="outputs" />
-            <Output v-for="(output,i) in outputs" :output="output" :key="i" />
+            <TextInput @update-outputs="update_ouputs" :conversation="null" />
+            <Output v-for="(qaPair, index) in []" :key="index" :output="qaPair" />
         </div>
     </div>
 </template>

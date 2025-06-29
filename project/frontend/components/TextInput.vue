@@ -1,83 +1,63 @@
 <script setup lang="ts">
-import type { ChatOutput } from "@/shared/types";
-import { IncompleteJsonParser } from "incomplete-json-parser";
+import type { Conversation } from "@/shared/types";
 import { InferenceClient } from "@huggingface/inference";
-const client = new InferenceClient("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");
-const parser = new IncompleteJsonParser();
+
 const isGenerating = ref(false);
 const text = ref("");
+import { GoogleGenerativeAI } from "@google/generative-ai";
+const configuration = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "AIzaSyAinZK6Y8l_giTTToEyBJjh3tAsHnfwvUc");
+const model = configuration.getGenerativeModel({ model: "gemini-2.0-flash" });
 const textAreaRef = ref<HTMLTextAreaElement | null>(null);
-function setOutputs(newValue: ChatOutput[] | ((prev: ChatOutput[]) => ChatOutput[])) {
-  if (typeof newValue === "function") {
-    outputs.value = newValue(outputs.value);
-  } else {
-    outputs.value = newValue;
-  }
-  emit("update-outputs", outputs.value);
 
-}
 const setIsGenerating = (state: boolean) => { };
-
+const conversation_id = ref<string>("");
 const props = defineProps<{
-  outputs: ChatOutput[]
+  conversation: Conversation | null
 }>()
 
-const outputs = ref(props.outputs)
+const messages = ref(props.conversation?.messages)
 const emit = defineEmits(["update-outputs"]);
 async function submit(e: any) {
   e.preventDefault();
-  if (outputs.value.length == 0) {
-    let generated_title : string | undefined = ""
+  console.log("Submitting message:", text.value);
+
+  if (messages.value?.length == 0) {
+    let generated_title: string | undefined = ""
     try {
-      
-      const chatCompletion = await client.chatCompletion({
-        provider: "auto",
-        model: "microsoft/Phi-3-mini-4k-instruct",
-        messages: [
-          {
-            role: "user",
-            content: `Generate a maximum 5 words conversation title from the following text: "${text.value}"`,
+      console.log('Generating title ....');
+
+      const result = await model.generateContent(`Return one conversation title (maximum of 4 words) from the following text: "${text.value}" . don't use markdown return in txt format`);
+      const response = result.response;
+
+      generated_title = response.text();
+      console.log('Generated Title : ', generated_title);
+      try {
+        const res = await fetch("http://127.0.0.1:8000/create_conversation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ],
-      });
-      generated_title = chatCompletion.choices[0].message.content
-      console.log("Generated title:", generated_title);
+          body: JSON.stringify({ title: generated_title || "New Conversation" }),
+        });
+        const data = await res.json();  // ⬅️ THIS reads the body
+        conversation_id.value = data.conversation_id;
+        sendMessage(text.value, data.conversation_id);
+        text.value = "";
+      } catch (error) {
+        console.log("Error creating conversation:", error);
+      }
     } catch (error) {
       console.log("Error creating conversation:", error);
     }
-    try {
-      const res = await fetch("http://127.0.0.1:8000/create_conversation", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title: generated_title || "New Conversation" }),
-      });
-      const data = await res.json();  // ⬅️ THIS reads the body!
-      sendMessage(text.value,data.conversation_id);
-      text.value = "";
-    } catch (error) {
-      console.log("Error creating conversation:", error);
-    }
+
+  } else {
+    sendMessage(text.value, conversation_id.value);
   }
-  
+
 }
 
 const sendMessage = async (message: string, conversation_id: string) => {
-  const newOutputs = [
-    ...outputs.value,
-    {
-      question: text.value,
-      steps: [],
-      result: {
-        answer: "",
-        tools_used: [],
-      },
-    },
-  ];
-  setOutputs(newOutputs);
   setIsGenerating(true);
-
   try {
     const res = await fetch(`http://127.0.0.1:8000/invoke`, {
       method: "POST",
@@ -96,10 +76,9 @@ const sendMessage = async (message: string, conversation_id: string) => {
       throw new Error("No response body");
     }
 
-    // Get the reader from the response body (not from res.json())
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    
+
     let done = false;
     let answer = { answer: "", tools_used: [] };
     let currentSteps: { name: string; result: Record<string, string> }[] = [];
@@ -111,7 +90,7 @@ const sendMessage = async (message: string, conversation_id: string) => {
     while (!done) {
       const { value, done: doneReading } = await reader.read();
       done = doneReading;
-      
+
       if (value) {
         let chunkValue = decoder.decode(value, { stream: true });
         console.log(`Received chunk: ${chunkValue}`);
@@ -126,7 +105,7 @@ const sendMessage = async (message: string, conversation_id: string) => {
               const stepNameStart = buffer.indexOf('<step_name>') + '<step_name>'.length;
               currentStepName = buffer.substring(stepNameStart, stepNameEndIndex);
               console.log(`Starting step: ${currentStepName}`);
-              
+
               // Remove the processed part from buffer
               buffer = buffer.substring(stepNameEndIndex + '</step_name>'.length);
               insideStep = true;
@@ -140,7 +119,7 @@ const sendMessage = async (message: string, conversation_id: string) => {
             buffer = buffer.substring('</step>'.length);
             console.log(`Ending step: ${currentStepName}`);
             console.log(`Step content: ${currentStepContent}`);
-            
+
             try {
               if (currentStepName === "final_answer") {
                 // Parse final answer
@@ -153,9 +132,9 @@ const sendMessage = async (message: string, conversation_id: string) => {
                 // Parse tool step
                 if (currentStepContent.trim()) {
                   const parsedResult = JSON.parse(currentStepContent.trim());
-                  currentSteps.push({ 
-                    name: currentStepName, 
-                    result: parsedResult 
+                  currentSteps.push({
+                    name: currentStepName,
+                    result: parsedResult
                   });
                   console.log(`Tool step added: ${currentStepName}`);
                 }
@@ -164,13 +143,9 @@ const sendMessage = async (message: string, conversation_id: string) => {
               console.error(`Error parsing step content for ${currentStepName}:`, parseError);
               console.error(`Content was: ${currentStepContent}`);
             }
-
-            // Reset step tracking
             insideStep = false;
             currentStepName = "";
             currentStepContent = "";
-            
-            // Remove </step> from buffer
             buffer = buffer.substring('</step>'.length);
           } else if (insideStep) {
             // We're inside a step, accumulate content
@@ -199,24 +174,20 @@ const sendMessage = async (message: string, conversation_id: string) => {
         }
 
         // Update output with current progress
-        setOutputs((prevOutputs) => {
-          const lastOutput = prevOutputs[prevOutputs.length - 1];
-          return [
-            ...prevOutputs.slice(0, -1),
-            {
-              ...lastOutput,
-              steps: [...currentSteps],
-              result: answer,
-            },
-          ];
-        });
       }
     }
 
     console.log("Streaming completed");
     console.log(`Final steps: ${JSON.stringify(currentSteps)}`);
     console.log(`Final answer: ${JSON.stringify(answer)}`);
-
+    emit("update-outputs", {
+      "question": text.value,
+      "response": {
+        "answer": answer.answer,
+        "tools_used": answer.tools_used,
+        "steps": currentSteps
+      }
+    })
   } catch (error) {
     console.error("Error in sendMessage:", error);
     setIsGenerating(false);
@@ -264,7 +235,7 @@ import { ArrowRight } from "lucide-vue-next";
 </script>
 
 <template>
-  <form @submit.prevent="submit" class="flex gap-3 z-0" :class="outputs.length > 0
+  <form @submit.prevent="submit" class="flex gap-3 z-0" :class="(messages ?? []).length > 0
     ? 'fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg'
     : ''
     ">
