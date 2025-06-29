@@ -38,26 +38,27 @@ import { ChevronDown } from "lucide-vue-next";
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  Select Workspace
-                  <ChevronDown class="ml-auto" />
-                </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent class="w-[--bits-dropdown-menu-anchor-width]">
-              <DropdownMenuItem>
-                <span>Acme Inc</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <span>Acme Corp.</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <p class="font-bold p-2">
+            Langchain project
+          </p>
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarHeader>
     <SidebarContent>
+      <SidebarGroup>
+        <SidebarGroupLabel>Options</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                    <NuxtLink href="/">
+                      <span>New chat</span>
+                    </NuxtLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
       <SidebarGroup>
         <SidebarGroupLabel>Chats History</SidebarGroupLabel>
         <SidebarGroupContent>
