@@ -25,12 +25,10 @@ async function get_conversations(){
   items.value = await response.json();
 }
 onMounted(() => {
-  // Set the width of the dropdown menu anchor
   get_conversations();
 })
-// Menu items.
 
-import { ChevronDown } from "lucide-vue-next";
+import { SquarePen } from "lucide-vue-next";
 </script>
 
 <template>
@@ -51,8 +49,8 @@ import { ChevronDown } from "lucide-vue-next";
           <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                    <NuxtLink href="/">
-                      <span>New chat</span>
+                    <NuxtLink href="/" class="flex justify-between items-center">
+                      <span>New chat </span><SquarePen />
                     </NuxtLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
