@@ -71,6 +71,7 @@ async def execute_tool(tool_call, name2tool) -> ToolMessage:
         )
     
 database = DatabaseConnection()
+
 class CustomAgentExecutor:
     def __init__(self, max_iterations: int = 5):
         self.chat_history: list[BaseMessage] = []
@@ -84,15 +85,18 @@ class CustomAgentExecutor:
             | prompt
             | llm.bind_tools(tools, tool_choice="any")
         )
+
     async def invoke(self, input: str, conversation_id: str, streamer: QueueCallbackHandler, verbose: bool = False) -> dict:
         print(f"\n=== CustomAgentExecutor.invoke called ===")
         print(f"Input: {input}")
         print(f"Conversation ID: {conversation_id}")
+        
         count = 0
         final_answer: str | None = None
         agent_scratchpad: list[AIMessage | ToolMessage] = []
         tools_used = []
         steps = []
+        
         while count < self.max_iterations:
             print(f"\n=== Iteration {count + 1}/{self.max_iterations} ===")
             try:
@@ -104,18 +108,17 @@ class CustomAgentExecutor:
                     "chat_history": self.chat_history,
                     "agent_scratchpad": agent_scratchpad
                 })
-                print(f"Agent response received: {type(response)}")
-                print(f"Response tool calls: {getattr(response, 'tool_calls', 'NO TOOL_CALLS')}")
+                
                 tool_calls = [response] if response.tool_calls else []
                 if not tool_calls:
                     print("⚠️  No tool calls generated!")
                     break
-                print(f"Processing {len(tool_calls)} tool calls...")
                 await streamer.queue.put("<<STEP_END>>")
+                
                 tool_obs = await asyncio.gather(
                     *[execute_tool(tool_call, name2tool) for tool_call in tool_calls]
                 )
-                print(f"Tool execution completed. Observations: {len(tool_obs)}")
+                
                 id2tool_obs = {tool_ob.tool_call_id: tool_ob for tool_ob in tool_obs}
                 
                 for tool_call in tool_calls:
@@ -125,6 +128,7 @@ class CustomAgentExecutor:
                             tool_call,
                             id2tool_obs[tool_call_id]
                         ])
+                        
                         tool_name = tc["name"]
                         tool_args = tc["args"]
                         tool_output = id2tool_obs[tool_call_id].content
@@ -134,11 +138,8 @@ class CustomAgentExecutor:
                         }
                         steps.append(step)
                         if tool_name != "final_answer":
-                            tools_used.append({
-                                "name": tool_name,
-                                "args": tool_args,
-                                "output": tool_output
-                            })
+                            tools_used.append(tool_name) 
+                
                 count += 1
                 found_final_answer = False
                 for tool_call in tool_calls:
@@ -146,7 +147,6 @@ class CustomAgentExecutor:
                         if tc["name"] == "final_answer":
                             print("✓ Found final answer tool call")
                             final_answer = tc["args"]["answer"]
-                            print(f"Final answer: {final_answer}")
                             found_final_answer = True
                             break
                     if found_final_answer:
@@ -162,15 +162,24 @@ class CustomAgentExecutor:
                 break
         await streamer.queue.put("<<STEP_END>>")
         try:
+            tools_used_detailed = []
+            for step in steps:
+                if step["name"] != "final_answer" and step["name"] in tools_used:
+                    tools_used_detailed.append({
+                        "name": step["name"],
+                        "args": {k: v for k, v in step["result"].items() if k != "output"},
+                        "output": step["result"].get("output", "")
+                    })
+            
             qa_pair = {
                 "question": input,
                 "response": {
                     "answer": final_answer or "No answer found",
-                    "tools_used": tools_used,
+                    "tools_used": tools_used_detailed,
                     "steps": steps
                 }
             }
-            database.add_message(conversation_id, qa_pair)  
+            database.add_message(conversation_id, qa_pair)
             print(f"Q&A pair stored successfully for conversation {conversation_id}")
         except Exception as e:
             print(f"Error storing Q&A pair: {e}")
@@ -179,9 +188,12 @@ class CustomAgentExecutor:
             AIMessage(content=final_answer or "No answer found")
         ])
         
-        result = {"answer": final_answer or "No answer found", "tools_used": tools_used, "steps": steps}
+        result = {
+            "answer": final_answer or "No answer found", 
+            "tools_used": tools_used,
+            "steps": steps
+        }
         print(f"=== CustomAgentExecutor.invoke completed. Result: {result} ===")
         return result
-
 
 agent = CustomAgentExecutor()
