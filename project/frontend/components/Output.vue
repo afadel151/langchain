@@ -14,7 +14,7 @@ import MarkdownRenderer from "./MarkdownRenderer.vue";
             {{ output.question }}
         </p>
         <Steps v-if="output.response.steps && output.response.steps.length > 0" :steps="output.response.steps"
-            :done="detailsHidden" />
+            :done="false" />
 
         <div class="mt-5 prose dark:prose-invert min-w-full prose-pre:whitespace-pre-wrap">
             <MarkdownRenderer :source="output.response?.answer" />
