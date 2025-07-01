@@ -6,7 +6,6 @@ import aiohttp
 load_dotenv()
 import os
 
-
 from pydantic import BaseModel
 class Article(BaseModel):
     """
@@ -48,7 +47,6 @@ async def exponential(x: float, y: float) -> float:
 async def subtract(x: float, y: float) -> float:
     """Subtract 'x' from 'y'."""
     return y - x
-
 @tool
 async def serpapi(query: str) -> list[Article]:
     """Use this tool to search the web."""
@@ -64,7 +62,6 @@ async def serpapi(query: str) -> list[Article]:
         ) as response:
             results = await response.json()
     return [Article.from_serpapi_result(result) for result in results["organic_results"]]
-
 
 
 @tool
