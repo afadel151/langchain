@@ -9,7 +9,6 @@ async def test_streaming_endpoint():
         "content": "What is the weather like?",
         "conversation_id": "test_123"
     }
-    
     print(f"Testing endpoint: {url}")
     print(f"Payload: {json.dumps(payload, indent=2)}")
     
@@ -18,12 +17,10 @@ async def test_streaming_endpoint():
             async with session.post(url, json=payload) as response:
                 print(f"Response status: {response.status}")
                 print(f"Response headers: {dict(response.headers)}")
-                
                 if response.status != 200:
                     text = await response.text()
                     print(f"Error response: {text}")
                     return
-                
                 chunk_count = 0
                 async for chunk in response.content.iter_chunked(1024):
                     chunk_count += 1
@@ -33,7 +30,6 @@ async def test_streaming_endpoint():
                     print(f"Decoded: {chunk_text}")
                 
                 print(f"\nTotal chunks received: {chunk_count}")
-                
     except Exception as e:
         print(f"Error testing endpoint: {e}")
         import traceback
