@@ -19,33 +19,25 @@ async def debug_invoke(request: InvokeRequest):
     """Debug endpoint to test agent without streaming complications"""
     print(f"=== DEBUG INVOKE ===")
     print(f"Request: {request}")
-    
-    # Test direct agent invocation
     direct_result = await debug_agent_invoke(agent_executor, request.content, request.conversation_id)
-    
-    # Test with debug callback handler
     debug_streamer = DebugQueueCallbackHandler()
     
     try:
-        # Run agent with debug callback
         task = asyncio.create_task(agent_executor.invoke(
             request.content,
             request.conversation_id,
             streamer=debug_streamer,
             verbose=True
         ))
-        
-        # Collect all tokens
         tokens = []
         async for token in debug_streamer:
             if token == "<<HEARTBEAT>>":
                 continue
             tokens.append(token)
-            if len(tokens) > 20:  # Prevent infinite loop
+            if len(tokens) > 20: 
                 break
         
         result = await task
-        
         return {
             "direct_result": str(direct_result),
             "tokens_received": [str(t) for t in tokens],
@@ -57,19 +49,12 @@ async def debug_invoke(request: InvokeRequest):
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
-    
-
-# Simple test endpoint
 @router.get("/test-tools")
 async def test_tools():
     """Test if your tools are working"""
     print("=== TESTING TOOLS ===")
-    
-    # Test tool execution directly
     if 'tools' in globals() and tools:
         print(f"Available tools: {[tool.name for tool in tools]}")
-        
-        # Try to create a fake tool call for testing
         fake_ai_message = AIMessage(
             content="",
             tool_calls=[{
@@ -78,7 +63,6 @@ async def test_tools():
                 "args": {"query": "test query"}
             }]
         )
-        
         try:
             result = await execute_tool(fake_ai_message, name2tool)
             return {
@@ -93,11 +77,8 @@ async def test_tools():
     else:
         return {"error": "No tools found"}
         
-# Also add this to your existing token_generator for more debugging
 async def enhanced_token_generator(agent_executor: CustomAgentExecutor, conversation_id: str, content: str, streamer: QueueCallbackHandler):
     print(f"=== ENHANCED TOKEN GENERATOR START ===")
-    
-    # First, test if the agent can generate anything at all
     print("Testing direct agent invocation...")
     try:
         direct_response = agent_executor.agent.invoke({
@@ -138,12 +119,9 @@ async def enhanced_token_generator(agent_executor: CustomAgentExecutor, conversa
                 yield f"<content>{token.content}</content>"
             else:
                 yield f"<unknown>{str(token)}</unknown>"
-                
-            # Safety break
             if token_count > 100:
                 print("⚠️  Too many tokens, breaking")
                 break
-                
     except Exception as e:
         print(f"Error in streaming: {e}")
         yield f"<error>{str(e)}</error>"
