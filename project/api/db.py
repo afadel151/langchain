@@ -51,9 +51,7 @@ class DatabaseConnection():
             print(f"Error adding Q&A pair to conversation {conversation_id}: {e}")
             return False
         
-        
-        
-        
+
     def get_conversation(self,conversation_id: str) -> dict:
         """Get a conversation by ID"""
         try:
@@ -75,18 +73,13 @@ class DatabaseConnection():
                 "updated_at" : 1,
                 "created_at" : 1,
             }).sort("updated_at",-1))
-            
-            # Convert ObjectIds to strings
             for conv in conversations:
                 conv["_id"] = str(conv["_id"])
                 
             return conversations
-            
         except Exception as e:
             print(f"Error listing conversations: {e}")
             return []
-
-
 
     def load_history(self,conversation_id: str):
         conv = self.get_conversation(conversation_id)
@@ -96,26 +89,20 @@ class DatabaseConnection():
                 history.append(HumanMessage(content=msg["content"]))
             elif msg["role"] == "assistant":
                 history.append(AIMessage(content=msg["content"]))
-            # You can also handle tool messages here if needed
         return history
-
-
     def search_conversations_by_tool(self,tool_name: str) -> list:
         """Find conversations that used a specific tool"""
         try:
             conversations = list(self.conversations.find({
                 "messages.response.tools_used.name": tool_name
             }))
-            
             for conv in conversations:
                 conv["_id"] = str(conv["_id"])
-                
             return conversations
             
         except Exception as e:
             print(f"Error searching conversations by tool: {e}")
             return []
-
     def get_conversation_stats(self,conversation_id: str) -> dict:
         """Get statistics about a conversation"""
         try:
@@ -129,7 +116,6 @@ class DatabaseConnection():
                     "avg_steps_per_question": {"$avg": {"$size": "$messages.response.steps"}}
                 }}
             ]
-            
             result = list(self.conversations.aggregate(pipeline))
             return result[0] if result else {}
             
