@@ -97,8 +97,6 @@ def get_conversation_by_id(conversation_id: str):
     conversation = database.get_conversation(conversation_id)
     if not conversation:
         return {"error": "Conversation not found"}
-    
-    # Return the messages array which now contains Q&A pairs
     return {
         "conversation_id": conversation["_id"],
         "title": conversation.get("title", "Untitled"),
@@ -134,29 +132,24 @@ async def debug_invoke(request: InvokeRequest):
     """Debug endpoint to test agent without streaming complications"""
     print(f"=== DEBUG INVOKE ===")
     print(f"Request: {request}")
-    
-    # Test direct agent invocation
     direct_result = await debug_agent_invoke(agent_executor, request.content, request.conversation_id)
     
-    # Test with debug callback handler
+
     debug_streamer = DebugQueueCallbackHandler()
     
     try:
-        # Run agent with debug callback
         task = asyncio.create_task(agent_executor.invoke(
             request.content,
             request.conversation_id,
             streamer=debug_streamer,
             verbose=True
         ))
-        
-        # Collect all tokens
         tokens = []
         async for token in debug_streamer:
             if token == "<<HEARTBEAT>>":
                 continue
             tokens.append(token)
-            if len(tokens) > 20:  # Prevent infinite loop
+            if len(tokens) > 20:
                 break
         
         result = await task
@@ -166,25 +159,17 @@ async def debug_invoke(request: InvokeRequest):
             "tokens_received": [str(t) for t in tokens],
             "final_result": str(result)
         }
-        
     except Exception as e:
         print(f"Error in debug invoke: {e}")
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
-    
-
-# Simple test endpoint
 @app.get("/test-tools")
 async def test_tools():
     """Test if your tools are working"""
     print("=== TESTING TOOLS ===")
-    
-    # Test tool execution directly
     if 'tools' in globals() and tools:
         print(f"Available tools: {[tool.name for tool in tools]}")
-        
-        # Try to create a fake tool call for testing
         fake_ai_message = AIMessage(
             content="",
             tool_calls=[{
@@ -193,7 +178,6 @@ async def test_tools():
                 "args": {"query": "test query"}
             }]
         )
-        
         try:
             result = await execute_tool(fake_ai_message, name2tool)
             return {
