@@ -139,7 +139,6 @@ class CustomAgentExecutor:
                         steps.append(step)
                         if tool_name != "final_answer":
                             tools_used.append(tool_name) 
-                
                 count += 1
                 found_final_answer = False
                 for tool_call in tool_calls:
@@ -151,7 +150,6 @@ class CustomAgentExecutor:
                             break
                     if found_final_answer:
                         break
-                
                 if found_final_answer:
                     break
                     
@@ -170,7 +168,6 @@ class CustomAgentExecutor:
                         "args": {k: v for k, v in step["result"].items() if k != "output"},
                         "output": step["result"].get("output", "")
                     })
-            
             qa_pair = {
                 "question": input,
                 "response": {
@@ -187,7 +184,6 @@ class CustomAgentExecutor:
             HumanMessage(content=input),
             AIMessage(content=final_answer or "No answer found")
         ])
-        
         result = {
             "answer": final_answer or "No answer found", 
             "tools_used": tools_used,
