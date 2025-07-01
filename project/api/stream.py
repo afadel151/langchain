@@ -51,7 +51,6 @@ async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: 
                     if current_step_name:
                         step_buffer += token
                     yield token
-                
                 else:
                     token_str = str(token)
                     print(f"Unknown token: {repr(token_str)}")
