@@ -46,28 +46,58 @@ watch(
         }
     }
 )
-const currentMessage = ref<{
-    question: string;
-    response: {
-        answer: string;
-        tools_used: ToolUsed[];
-        steps: { name: string; result: Record<string, any> }[];
-    };
-} | null>(null);
+
+
+
+// Ajoutez cette fonction après vos autres déclarations de variables
+const updateCurrentMessage = (newAnswer: string, newToolsUsed: any[] = [], newSteps: any[] = []) => {
+    if (conversation.value && conversation.value.messages.length > 0) {
+        const lastMessageIndex = conversation.value.messages.length - 1;
+        const lastMessage = conversation.value.messages[lastMessageIndex];
+        
+        // Create a new response object to trigger reactivity
+        conversation.value.messages[lastMessageIndex] = {
+            ...lastMessage,
+            response: {
+                ...lastMessage.response,
+                answer: newAnswer,
+                tools_used: newToolsUsed.length > 0 ? newToolsUsed : lastMessage.response.tools_used,
+                steps: newSteps.length > 0 ? newSteps : lastMessage.response.steps
+            }
+        };
+    }
+};
+
+// Fonction pour ajouter une étape
+const addStepToCurrentMessage = (newStep: any) => {
+    if (conversation.value && conversation.value.messages.length > 0) {
+        const lastMessageIndex = conversation.value.messages.length - 1;
+        const lastMessage = conversation.value.messages[lastMessageIndex];
+        
+        conversation.value.messages[lastMessageIndex] = {
+            ...lastMessage,
+            response: {
+                ...lastMessage.response,
+                steps: [...lastMessage.response.steps, newStep]
+            }
+        };
+        console.log(conversation.value.messages[lastMessageIndex].response.steps);
+        
+    }
+};
 
 const sendMessage = async (message: string) => {
     isStreaming.value = true;
-    currentMessage.value = {
-        question: message,
-        response: {
-            answer: "Thinking...",
-            tools_used: [],
-            steps: []
-        }
-    };
     if (conversation.value) {
-        conversation.value.messages.push(currentMessage.value);
-        console.log("Message added to conversation:", currentMessage.value);
+        conversation.value.messages.push({
+            question: message,
+            response: {
+                answer: "Thinking...",
+                tools_used: [],
+                steps: []
+            }
+        });
+        console.log("Message added to conversation:", conversation.value.messages[conversation.value.messages.length-1]);
     }
     try {
         const res = await fetch(`http://127.0.0.1:8000/invoke`, {
@@ -92,6 +122,7 @@ const sendMessage = async (message: string) => {
         let insideStep = false;
         streamedSteps.value = [];
         currentAnswer.value = null;
+        
         while (!done) {
             try {
                 const { value, done: doneReading } = await reader.read();
@@ -122,34 +153,32 @@ const sendMessage = async (message: string) => {
                             const jsonMatch = currentStepContent.match(/^\s*(\{[\s\S]*?\})/);
                             if (!jsonMatch) throw new Error("No valid JSON found in step content");
                             const parsed = JSON.parse(jsonMatch[1])
+                            
                             if (currentStepName === "final_answer") {
                                 currentAnswer.value = parsed;
                                 console.log(`✅ Final answer parsed: ${JSON.stringify(parsed)}`);
-                                if (currentMessage.value) {
-                                    currentMessage.value.response.answer = parsed.answer;
-                                    console.log(`🎯 Updated message answer: "${parsed.answer}"`);
-                                    const toolsUsedNames = parsed.tools_used || [];
-                                    currentMessage.value.response.tools_used = streamedSteps.value
-                                        .filter(step => toolsUsedNames.includes(step.name))
-                                        .map(step => ({
-                                            name: step.name,
-                                            args: { ...step.result },
-                                            output: step.result.output || JSON.stringify(step.result)
-                                        }));
-
-                                    console.log(`🔧 Updated tools_used:`, currentMessage.value.response.tools_used);
-                                }
+                                
+                                // ✨ UTILISATION DE LA FONCTION ICI
+                                const toolsUsedNames = parsed.tools_used || [];
+                                const toolsUsedFormatted = streamedSteps.value
+                                    .filter(step => toolsUsedNames.includes(step.name))
+                                    .map(step => ({
+                                        name: step.name,
+                                        args: { ...step.result },
+                                        output: step.result.output || JSON.stringify(step.result)
+                                    }));
+                                
+                                updateCurrentMessage(parsed.answer, toolsUsedFormatted);
+                                console.log(`🎯 Updated message with new answer: "${parsed.answer}"`);
+                                
                             } else {
                                 const newStep = {
                                     name: currentStepName,
                                     result: parsed
                                 };
                                 streamedSteps.value.push(newStep);
-                                if (currentMessage.value) {
-                                    currentMessage.value.response.steps.push(newStep);
-                                    console.log(`📝 Added step to message:`, newStep);
-                                }
-
+                                addStepToCurrentMessage(newStep);
+                                console.log(`📝 Added step to message:`, newStep);
                                 console.log(`✅ Step pushed: ${JSON.stringify(newStep)}`);
                             }
                         } catch (parseError) {
@@ -183,11 +212,14 @@ const sendMessage = async (message: string) => {
                 break;
             }
         }
+        
         console.log("🏁 Streaming completed");
         console.log("📊 Final streamedSteps:", streamedSteps.value);
         console.log("📋 Final currentAnswer:", currentAnswer.value);
-        console.log("💬 Final currentMessage:", currentMessage.value);
-        if (currentMessage.value && currentAnswer.value) {
+        console.log("💬 Final currentMessage:", conversation.value?.messages[conversation.value.messages.length-1]);
+        
+        // ✨ UTILISATION FINALE DE LA FONCTION
+        if (conversation.value?.messages[conversation.value.messages.length-1] && currentAnswer.value) {
             const finalAnswerStep = {
                 name: "final_answer",
                 result: {
@@ -199,19 +231,17 @@ const sendMessage = async (message: string) => {
                     })
                 }
             };
-            if (!currentMessage.value.response.steps.some(step => step.name === "final_answer")) {
-                currentMessage.value.response.steps.push(finalAnswerStep);
+            
+            const currentMessage = conversation.value.messages[conversation.value.messages.length-1];
+            if (!currentMessage.response.steps.some(step => step.name === "final_answer")) {
+                addStepToCurrentMessage(finalAnswerStep);
             }
         }
     } catch (error) {
         console.error("❌ Error in sendMessage:", error);
-        if (currentMessage.value) {
-            currentMessage.value.response.answer = "Error occurred while processing your request.";
-        }
     } finally {
         console.log("🔚 sendMessage finally block executed");
         isStreaming.value = false;
-        currentMessage.value = null;
     }
 };
 </script>

@@ -3,7 +3,7 @@ import asyncio
 from langchain_core.messages import AIMessage
 
 from agent import CustomAgentExecutor
-from messages import QueueCallbackHandler
+from callback import QueueCallbackHandler
 
 async def token_generator(agent_executor: CustomAgentExecutor, conversation_id: str, content: str, streamer: QueueCallbackHandler):
     print(f"=== Starting token generation for conversation {conversation_id} ===")

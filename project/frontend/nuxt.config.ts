@@ -1,4 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+require('dotenv').config()
 import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
@@ -7,6 +8,11 @@ export default defineNuxtConfig({
   plugins:[
     '~/plugins/markdown-plugin',
   ],
+  runtimeConfig: {
+    public: {
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY, // loads from .env automatically
+    },
+  },
   vite: {
     plugins: [
       tailwindcss(),

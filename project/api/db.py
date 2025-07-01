@@ -2,12 +2,14 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from datetime import datetime
-
+from dotenv import load_dotenv 
+import os
+load_dotenv()
 
 
 class DatabaseConnection():
     def __init__(self):
-        self.client = MongoClient("mongodb://root:root@localhost:27017/")
+        self.client = MongoClient(os.environ["MONGODB_URI"])
         self.conversations = self.client["chat_db"]["conversations"]
     
     def create_conversation(self,title: str) -> str:

@@ -1,3 +1,4 @@
+
 <template>
   <SidebarProvider>
     <AppSidebar />

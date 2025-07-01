@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import type { Conversation } from "@/shared/types";
-import { InferenceClient } from "@huggingface/inference";
-
 const isGenerating = ref(false);
 const text = ref("");
 import { GoogleGenerativeAI } from "@google/generative-ai";
-const configuration = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "AIzaSyAinZK6Y8l_giTTToEyBJjh3tAsHnfwvUc");
+const config = useRuntimeConfig();
+const apiKey = config.public.GOOGLE_API_KEY;
+if (!apiKey) {
+  throw new Error("GOOGLE_API_KEY environment variable is not defined");
+}
+const configuration = new GoogleGenerativeAI(apiKey);
 const model = configuration.getGenerativeModel({ model: "gemini-2.0-flash" });
 const textAreaRef = ref<HTMLTextAreaElement | null>(null);
 
-const setIsGenerating = (state: boolean) => { };
+
 const conversation_id = ref<string>("");
 const props = defineProps<{
   conversation: Conversation | null
@@ -56,146 +59,6 @@ async function submit(e: any) {
 
 }
 
-// const sendMessage = async (message: string,conversation_id: string) => {
-  // emit("send_message",message,conversation_id)
-  // setIsGenerating(true);
-  // try {
-  //   const res = await fetch(`http://127.0.0.1:8000/invoke`, {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({ content: message, conversation_id: conversation_id })
-  //   });
-
-  //   if (!res.ok) {
-  //     throw new Error(`HTTP error! status: ${res.status}`);
-  //   }
-
-  //   // Check if response body exists
-  //   if (!res.body) {
-  //     throw new Error("No response body");
-  //   }
-
-  //   const reader = res.body.getReader();
-  //   const decoder = new TextDecoder();
-
-  //   let done = false;
-  //   let answer = { answer: "", tools_used: [] };
-  //   let currentSteps: { name: string; result: Record<string, string> }[] = [];
-  //   let buffer = "";
-  //   let currentStepName = "";
-  //   let currentStepContent = "";
-  //   let insideStep = false;
-
-  //   while (!done) {
-  //     const { value, done: doneReading } = await reader.read();
-  //     done = doneReading;
-
-  //     if (value) {
-  //       let chunkValue = decoder.decode(value, { stream: true });
-  //       console.log(`Received chunk: ${chunkValue}`);
-  //       buffer += chunkValue;
-
-  //       // Process buffer for complete tokens
-  //       while (buffer.length > 0) {
-  //         if (buffer.startsWith('<step><step_name>')) {
-  //           // Start of a new step
-  //           const stepNameEndIndex = buffer.indexOf('</step_name>');
-  //           if (stepNameEndIndex !== -1) {
-  //             const stepNameStart = buffer.indexOf('<step_name>') + '<step_name>'.length;
-  //             currentStepName = buffer.substring(stepNameStart, stepNameEndIndex);
-  //             console.log(`Starting step: ${currentStepName}`);
-
-  //             // Remove the processed part from buffer
-  //             buffer = buffer.substring(stepNameEndIndex + '</step_name>'.length);
-  //             insideStep = true;
-  //             currentStepContent = "";
-  //           } else {
-  //             // Wait for more data
-  //             break;
-  //           }
-  //         } else if (buffer.startsWith('</step>') && insideStep) {
-  //           // End of current step
-  //           buffer = buffer.substring('</step>'.length);
-  //           console.log(`Ending step: ${currentStepName}`);
-  //           console.log(`Step content: ${currentStepContent}`);
-
-  //           try {
-  //             if (currentStepName === "final_answer") {
-  //               // Parse final answer
-  //               if (currentStepContent.trim()) {
-  //                 const parsedAnswer = JSON.parse(currentStepContent.trim());
-  //                 answer = parsedAnswer;
-  //                 console.log(`Final answer parsed: ${JSON.stringify(answer)}`);
-  //               }
-  //             } else {
-  //               // Parse tool step
-  //               if (currentStepContent.trim()) {
-  //                 const parsedResult = JSON.parse(currentStepContent.trim());
-  //                 currentSteps.push({
-  //                   name: currentStepName,
-  //                   result: parsedResult
-  //                 });
-  //                 console.log(`Tool step added: ${currentStepName}`);
-  //               }
-  //             }
-  //           } catch (parseError) {
-  //             console.error(`Error parsing step content for ${currentStepName}:`, parseError);
-  //             console.error(`Content was: ${currentStepContent}`);
-  //           }
-  //           insideStep = false;
-  //           currentStepName = "";
-  //           currentStepContent = "";
-  //           buffer = buffer.substring('</step>'.length);
-  //         } else if (insideStep) {
-  //           // We're inside a step, accumulate content
-  //           const match = buffer.match(/({.*})/s); // greedy match for JSON object
-  //           if (match) {
-  //             currentStepContent = match[1]; // only store one JSON block
-  //           }
-  //           buffer = "";
-  //         } else {
-  //           // Look for the start of next step or consume one character
-  //           const nextStepIndex = buffer.indexOf('<step>');
-  //           if (nextStepIndex === -1) {
-  //             // No more steps in buffer, consume all
-  //             if (insideStep) {
-  //               currentStepContent += buffer;
-  //             }
-  //             buffer = "";
-  //           } else {
-  //             // Found next step, consume up to that point
-  //             if (insideStep) {
-  //               currentStepContent += buffer.substring(0, nextStepIndex);
-  //             }
-  //             buffer = buffer.substring(nextStepIndex);
-  //           }
-  //         }
-  //       }
-
-  //       // Update output with current progress
-  //     }
-  //   }
-
-  //   console.log("Streaming completed");
-  //   console.log(`Final steps: ${JSON.stringify(currentSteps)}`);
-  //   console.log(`Final answer: ${JSON.stringify(answer)}`);
-  //   emit("update-outputs", {
-  //     "question": text.value,
-  //     "response": {
-  //       "answer": answer.answer,
-  //       "tools_used": answer.tools_used,
-  //       "steps": currentSteps
-  //     }
-  //   })
-  // } catch (error) {
-  //   console.error("Error in sendMessage:", error);
-  //   setIsGenerating(false);
-  // } finally {
-  //   setIsGenerating(false);
-  // }
-// };
 
 function submitOnEnter(event: any) {
   if (event.key === "Enter" && !event.shiftKey) {

@@ -3,7 +3,7 @@ load_dotenv()
 from db import DatabaseConnection
 import asyncio
 from langchain_mistralai import ChatMistralAI
-from messages import QueueCallbackHandler
+from callback import QueueCallbackHandler
 import getpass
 import os
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
@@ -83,7 +83,7 @@ class CustomAgentExecutor:
                 "agent_scratchpad": lambda x: x.get("agent_scratchpad", [])
             }
             | prompt
-            | llm.bind_tools(tools, tool_choice="any")
+            | llm2.bind_tools(tools, tool_choice="any")
         )
 
     async def invoke(self, input: str, conversation_id: str, streamer: QueueCallbackHandler, verbose: bool = False) -> dict:
