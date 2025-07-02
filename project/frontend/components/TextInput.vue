@@ -56,7 +56,7 @@ async function submit(e: any) {
   } else {
     emit("send_message",text.value)
   }
-
+  text.value = ''
 }
 
 

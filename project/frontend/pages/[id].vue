@@ -8,22 +8,21 @@ const conversationId = useRoute().params.id as string;
 
 import { ref } from 'vue';
 import TextInput from '../components/TextInput.vue';
-
-onMounted(async () => {
+const fetchMessages = async () => {
     try {
-        const response = await fetch(`http://127.0.0.1:8000/get_conversation?conversation_id=${conversationId}`);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error('Error loading conversation:', data.error);
-        } else {
-            conversation.value = data;
-        }
+        const result = await fetch(`http://127.0.0.1:8000/get_conversation?conversation_id=${conversationId}`,{
+            method: 'GET',
+        });
+        // console.log(data.value);
+        conversation.value = await result.json();
     } catch (error) {
         console.error('Failed to load conversation:', error);
     } finally {
         loading.value = false;
     }
+}
+onMounted(()=>{
+    fetchMessages();
 });
 
 
@@ -33,9 +32,8 @@ const currentAnswer = ref<{ answer: string; tools_used: string[] } | null>(null)
 
 const isStreaming = ref(false);
 
-import { watch, nextTick } from 'vue'
 
-const scrollContainer : any = ref(null)
+const scrollContainer: any = ref(null)
 
 watch(
     () => conversation.value?.messages.length,
@@ -54,7 +52,7 @@ const updateCurrentMessage = (newAnswer: string, newToolsUsed: any[] = [], newSt
     if (conversation.value && conversation.value.messages.length > 0) {
         const lastMessageIndex = conversation.value.messages.length - 1;
         const lastMessage = conversation.value.messages[lastMessageIndex];
-        
+
         // Create a new response object to trigger reactivity
         conversation.value.messages[lastMessageIndex] = {
             ...lastMessage,
@@ -68,12 +66,11 @@ const updateCurrentMessage = (newAnswer: string, newToolsUsed: any[] = [], newSt
     }
 };
 
-// Fonction pour ajouter une étape
 const addStepToCurrentMessage = (newStep: any) => {
     if (conversation.value && conversation.value.messages.length > 0) {
         const lastMessageIndex = conversation.value.messages.length - 1;
         const lastMessage = conversation.value.messages[lastMessageIndex];
-        
+
         conversation.value.messages[lastMessageIndex] = {
             ...lastMessage,
             response: {
@@ -82,7 +79,7 @@ const addStepToCurrentMessage = (newStep: any) => {
             }
         };
         console.log(conversation.value.messages[lastMessageIndex].response.steps);
-        
+
     }
 };
 
@@ -97,7 +94,7 @@ const sendMessage = async (message: string) => {
                 steps: []
             }
         });
-        console.log("Message added to conversation:", conversation.value.messages[conversation.value.messages.length-1]);
+        console.log("Message added to conversation:", conversation.value.messages[conversation.value.messages.length - 1]);
     }
     try {
         const res = await fetch(`http://127.0.0.1:8000/invoke`, {
@@ -122,7 +119,7 @@ const sendMessage = async (message: string) => {
         let insideStep = false;
         streamedSteps.value = [];
         currentAnswer.value = null;
-        
+
         while (!done) {
             try {
                 const { value, done: doneReading } = await reader.read();
@@ -153,11 +150,11 @@ const sendMessage = async (message: string) => {
                             const jsonMatch = currentStepContent.match(/^\s*(\{[\s\S]*?\})/);
                             if (!jsonMatch) throw new Error("No valid JSON found in step content");
                             const parsed = JSON.parse(jsonMatch[1])
-                            
+
                             if (currentStepName === "final_answer") {
                                 currentAnswer.value = parsed;
                                 console.log(`✅ Final answer parsed: ${JSON.stringify(parsed)}`);
-                                
+
                                 // ✨ UTILISATION DE LA FONCTION ICI
                                 const toolsUsedNames = parsed.tools_used || [];
                                 const toolsUsedFormatted = streamedSteps.value
@@ -167,10 +164,10 @@ const sendMessage = async (message: string) => {
                                         args: { ...step.result },
                                         output: step.result.output || JSON.stringify(step.result)
                                     }));
-                                
+
                                 updateCurrentMessage(parsed.answer, toolsUsedFormatted);
                                 console.log(`🎯 Updated message with new answer: "${parsed.answer}"`);
-                                
+
                             } else {
                                 const newStep = {
                                     name: currentStepName,
@@ -212,14 +209,14 @@ const sendMessage = async (message: string) => {
                 break;
             }
         }
-        
+
         console.log("🏁 Streaming completed");
         console.log("📊 Final streamedSteps:", streamedSteps.value);
         console.log("📋 Final currentAnswer:", currentAnswer.value);
-        console.log("💬 Final currentMessage:", conversation.value?.messages[conversation.value.messages.length-1]);
-        
+        console.log("💬 Final currentMessage:", conversation.value?.messages[conversation.value.messages.length - 1]);
+
         // ✨ UTILISATION FINALE DE LA FONCTION
-        if (conversation.value?.messages[conversation.value.messages.length-1] && currentAnswer.value) {
+        if (conversation.value?.messages[conversation.value.messages.length - 1] && currentAnswer.value) {
             const finalAnswerStep = {
                 name: "final_answer",
                 result: {
@@ -231,8 +228,8 @@ const sendMessage = async (message: string) => {
                     })
                 }
             };
-            
-            const currentMessage = conversation.value.messages[conversation.value.messages.length-1];
+
+            const currentMessage = conversation.value.messages[conversation.value.messages.length - 1];
             if (!currentMessage.response.steps.some(step => step.name === "final_answer")) {
                 addStepToCurrentMessage(finalAnswerStep);
             }
@@ -241,6 +238,7 @@ const sendMessage = async (message: string) => {
         console.error("❌ Error in sendMessage:", error);
     } finally {
         console.log("🔚 sendMessage finally block executed");
+        fetchMessages();
         isStreaming.value = false;
     }
 };
@@ -257,8 +255,7 @@ const sendMessage = async (message: string) => {
                         Debug: Total messages: {{ conversation.messages.length }}
                         <br>Is streaming: {{ isStreaming }}
                     </div>
-                    <Output v-for="(qaPair, index) in conversation.messages" :key="index"
-                        :output="qaPair" />
+                    <Output v-for="(qaPair, index) in conversation.messages" :key="index" :output="qaPair" />
                 </div>
                 <div v-if="isStreaming && streamedSteps.length" class="mt-10 p-4 bg-gray-100 rounded">
                     <h3 class="text-lg font-bold">Debug: Streaming Steps</h3>
