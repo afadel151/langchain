@@ -10,3 +10,5 @@ class CreateConversationRequest(BaseModel):
 class GetConversationRequest(BaseModel):
     conversation_id: str
     
+class CreateTitleRequest(BaseModel):
+    content : str

@@ -22,44 +22,9 @@ const messages = ref(props.conversation?.messages)
 const emit = defineEmits(["send_message"]);
 async function submit(e: any) {
   e.preventDefault();
-  console.log("Submitting message:", text.value);
-
-  if (messages.value?.length == 0) {
-    let generated_title: string | undefined = ""
-    try {
-      console.log('Generating title ....');
-
-      const result = await model.generateContent(`Return one conversation title (maximum of 4 words) from the following text: "${text.value}" . don't use markdown return in txt format`);
-      const response = result.response;
-
-      generated_title = response.text();
-      console.log('Generated Title : ', generated_title);
-      try {
-        const res = await fetch("http://127.0.0.1:8000/create_conversation", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ title: generated_title || "New Conversation" }),
-        });
-        const data = await res.json();  // ⬅️ THIS reads the body
-        conversation_id.value = data.conversation_id;
-        emit("send_message",text.value,conversation_id)
-        text.value = "";
-      } catch (error) {
-        console.log("Error creating conversation:", error);
-      }
-    } catch (error) {
-      console.log("Error creating conversation:", error);
-    }
-
-  } else {
-    emit("send_message",text.value)
-  }
+  emit("send_message",text.value)
   text.value = ''
 }
-
-
 function submitOnEnter(event: any) {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
@@ -84,14 +49,11 @@ watch(text, (newValue) => {
 function handleResize() {
   adjustHeight();
 }
-
-// When component is mounted
 onMounted(() => {
   window.addEventListener("resize", handleResize);
-  adjustHeight(); // Optionally call once on mount
+  adjustHeight(); 
 });
-
-// Clean up when component is destroyed
+// Clean up 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
 });

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_mistralai import ChatMistralAI
 from pydantic import BaseModel
 import uvicorn
-from custom_requests import InvokeRequest, CreateConversationRequest, GetConversationRequest
+from custom_requests import InvokeRequest, CreateConversationRequest, GetConversationRequest,CreateTitleRequest
 from debug import DebugQueueCallbackHandler, debug_agent_invoke
 load_dotenv() 
 import asyncio 
@@ -15,6 +15,7 @@ from stream import token_generator
 from langchain_core.runnables import ConfigurableField
 from langchain_core.messages import AIMessage
 from db import DatabaseConnection
+from title import chain
 database = DatabaseConnection()
 agent_executor = CustomAgentExecutor()
 app = FastAPI()
@@ -119,6 +120,10 @@ def get_conversation_statistics(conversation_id: str):
     return stats
 
 
+@app.post('/create_title')
+async def create_title(request : CreateTitleRequest):
+    title =  chain.invoke({'content': request.content})
+    return  database.create_conversation(title['title'])
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
     

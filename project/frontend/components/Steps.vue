@@ -25,7 +25,6 @@ import { ChevronDown, ChevronUp } from 'lucide-vue-next';
             <ChevronDown v-if="hidden" />
             <ChevronUp v-else />
         </Button>
-
         <transition name="fade">
             <div v-if="!hidden" class="flex gap-2 mt-4">
                 <div class="pt-2 flex flex-col items-center shrink-0">

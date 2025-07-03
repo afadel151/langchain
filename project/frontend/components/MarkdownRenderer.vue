@@ -12,5 +12,4 @@ defineProps({
   }
 })
 import Markdown from 'vue3-markdown-it'
-   
 </script>
