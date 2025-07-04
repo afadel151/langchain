@@ -87,6 +87,13 @@ class CustomAgentExecutor:
         )
 
     async def invoke(self, input: str, conversation_id: str, streamer: QueueCallbackHandler, verbose: bool = False) -> dict:
+        conversation = database.get_conversation(conversation_id)
+        new_chat_history = []
+        last_messages = conversation['messages'][-6:]
+        for message in last_messages:
+            new_chat_history.append(HumanMessage(message['question']))
+            new_chat_history.append(AIMessage(message['response']['answer']))
+        self.chat_history = new_chat_history
         print(f"\n=== CustomAgentExecutor.invoke called ===")
         print(f"Input: {input}")
         print(f"Conversation ID: {conversation_id}")
@@ -101,7 +108,7 @@ class CustomAgentExecutor:
             print(f"\n=== Iteration {count + 1}/{self.max_iterations} ===")
             try:
                 print("Generating agent response...")
-                response = await self.agent.with_config(
+                response = await  self.agent.with_config(
                     callbacks=[streamer]
                 ).ainvoke({
                     "input": input,
@@ -115,7 +122,7 @@ class CustomAgentExecutor:
                     break
                 await streamer.queue.put("<<STEP_END>>")
                 
-                tool_obs = await asyncio.gather(
+                tool_obs = await  asyncio.gather(
                     *[execute_tool(tool_call, name2tool) for tool_call in tool_calls]
                 )
                 
