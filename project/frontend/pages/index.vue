@@ -42,15 +42,12 @@ const addStepToCurrentMessage = (newStep: any) => {
 };
 
 const sendMessage = async (message: string) => {
-    console.log(JSON.stringify({content : message }));
-    
     try {
         const response = await fetch(`http://127.0.0.1:8000/create_title`, {
             method: 'POST',
             body: JSON.stringify({content : message })
         })
         console.log(response);
-
         conversationId.value = await response.json()
     } catch (error) {
         console.log(error);
