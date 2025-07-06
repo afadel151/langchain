@@ -47,6 +47,7 @@ async def exponential(x: float, y: float) -> float:
 async def subtract(x: float, y: float) -> float:
     """Subtract 'x' from 'y'."""
     return y - x
+
 @tool
 async def serpapi(query: str) -> list[Article]:
     """Use this tool to search the web."""

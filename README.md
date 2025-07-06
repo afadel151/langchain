@@ -44,7 +44,7 @@ Frontend (Nuxt.js) → API (FastAPI) → LangChain Agent → AI Models
 1. **Clone repository**
 ```bash
 git clone https://github.com/afadel151/langchain.git
-cd langchain/project
+cd langchain/chat-system
 ```
 
 2. **Backend setup**
