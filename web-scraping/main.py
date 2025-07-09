@@ -1,5 +1,5 @@
 def main():
-    print("Hello from langgraph-api!")
+    print("Hello from web-scraping!")
 
 
 if __name__ == "__main__":
