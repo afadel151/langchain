@@ -7,5 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "asttokens>=3.0.0",
     "beautifulsoup4>=4.13.4",
+    "crawl4ai>=0.7.0",
+    "nest-asyncio>=1.6.0",
     "requests>=2.32.4",
 ]
