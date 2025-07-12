@@ -3,7 +3,7 @@ from crawl4ai import AsyncWebCrawler
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 
 async def main():
-    browser_config = BrowserConfig()  
+    browser_config = BrowserConfig(verbose=True) # verbose=True >> Enable logging  
     run_config = CrawlerRunConfig(
         word_count_threshold=10,
         exclude_external_links=True,
@@ -16,6 +16,10 @@ async def main():
             url="https://example.com",
             config=run_config
         )
+        # always check for errors
+        if not result.success:
+            print(f"Crawl failed: {result.error_message}")
+            print(f"Status code: {result.status_code}")
         print(result.html)  # Raw HTML
         print(result.cleaned_html) # Cleaned HTML
         print(result.markdown.raw_markdown) # Raw markdown from cleaned html
