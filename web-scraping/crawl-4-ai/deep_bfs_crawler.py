@@ -15,7 +15,7 @@ async def main():
     )
 
     async with AsyncWebCrawler() as crawler:
-        results = await crawler.arun("https://example.com", config=config)
+        results = await crawler.arun("https://github.com", config=config)
 
         print(f"Crawled {len(results)} pages in total")
 

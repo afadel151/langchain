@@ -8,7 +8,7 @@ async def main():
         word_count_threshold=10,
         exclude_external_links=True,
         remove_overlay_elements=True,
-        process_iframes=True
+        process_iframes=True,
         )  
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
